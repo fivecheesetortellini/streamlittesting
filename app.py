@@ -1,40 +1,89 @@
 import streamlit as st
 import leafmap.foliumap as leafmap
+import geopandas as gpd
+import tempfile
+import zipfile
+import os
+import pandas as pd
+from shapely.geometry import Point
 
-st.set_page_config(layout="wide")
+# ---- Streamlit setup ----
+st.set_page_config(page_title="Map Viewer", layout="wide")
+st.title("🌎 Map Viewer with Upload Support")
 
-# Customize the sidebar
-markdown = """
-A Streamlit map template
-<https://github.com/opengeos/streamlit-map-template>
-"""
+# ---- Create Leafmap Map ----
+m = leafmap.Map(center=[37.8, -96], zoom=4)
+m.add_basemap("CartoDB.Positron")
 
-st.sidebar.title("About")
-st.sidebar.info(markdown)
-logo = "https://i.imgur.com/UbOXYAU.png"
-st.sidebar.image(logo)
+st.sidebar.header("📂 Upload Spatial Data")
 
-# Customize page title
-st.title("Streamlit for Geospatial Applications")
-
-st.markdown(
-    """
-    This multipage app template demonstrates various interactive web apps created using [streamlit](https://streamlit.io) and [leafmap](https://leafmap.org). It is an open-source project and you are very welcome to contribute to the [GitHub repository](https://github.com/opengeos/streamlit-map-template).
-    """
+# ---- File uploader ----
+uploaded_file = st.sidebar.file_uploader(
+    "Upload a Shapefile (.zip), KML, GeoJSON, or CSV file",
+    type=["zip", "kml", "geojson", "csv"]
 )
 
-st.header("Instructions")
+# ---- Handle uploads ----
+if uploaded_file is not None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        file_path = os.path.join(tmpdir, uploaded_file.name)
 
-markdown = """
-1. For the [GitHub repository](https://github.com/opengeos/streamlit-map-template) or [use it as a template](https://github.com/opengeos/streamlit-map-template/generate) for your own project.
-2. Customize the sidebar by changing the sidebar text and logo in each Python files.
-3. Find your favorite emoji from https://emojipedia.org.
-4. Add a new app to the `pages/` directory with an emoji in the file name, e.g., `1_🚀_Chart.py`.
+        with open(file_path, "wb") as f:
+            f.write(uploaded_file.getvalue())
 
-"""
+        # Case 1: Shapefile (.zip)
+        if uploaded_file.name.endswith(".zip"):
+            with zipfile.ZipFile(file_path, "r") as zip_ref:
+                zip_ref.extractall(tmpdir)
+            shp_files = [os.path.join(tmpdir, f) for f in os.listdir(tmpdir) if f.endswith(".shp")]
+            if shp_files:
+                gdf = gpd.read_file(shp_files[0])
+                st.success(f"✅ Loaded {len(gdf)} features from Shapefile")
+                m.add_gdf(gdf, layer_name="Uploaded Shapefile")
+                m.zoom_to_gdf(gdf)
+            else:
+                st.error("No .shp file found in the ZIP archive.")
 
-st.markdown(markdown)
+        # Case 2: KML
+        elif uploaded_file.name.endswith(".kml"):
+            gdf = gpd.read_file(file_path, driver="KML")
+            st.success(f"✅ Loaded {len(gdf)} features from KML")
+            m.add_gdf(gdf, layer_name="Uploaded KML")
+            m.zoom_to_gdf(gdf)
 
-m = leafmap.Map(minimap_control=True)
-m.add_basemap("OpenTopoMap")
-m.to_streamlit(height=500)
+        # Case 3: GeoJSON
+        elif uploaded_file.name.endswith(".geojson"):
+            gdf = gpd.read_file(file_path)
+            st.success(f"✅ Loaded {len(gdf)} features from GeoJSON")
+            m.add_gdf(gdf, layer_name="Uploaded GeoJSON")
+            m.zoom_to_gdf(gdf)
+
+        # Case 4: CSV with lat/lon columns
+        elif uploaded_file.name.endswith(".csv"):
+            df = pd.read_csv(file_path)
+            st.info("📄 CSV detected — looking for lat/lon columns...")
+
+            lat_cols = [col for col in df.columns if 'lat' in col.lower()]
+            lon_cols = [col for col in df.columns if 'lon' in col.lower()]
+
+            if lat_cols and lon_cols:
+                lat_col = lat_cols[0]
+                lon_col = lon_cols[0]
+                gdf = gpd.GeoDataFrame(
+                    df,
+                    geometry=gpd.points_from_xy(df[lon_col], df[lat_col]),
+                    crs="EPSG:4326"
+                )
+                st.success(f"✅ Loaded {len(gdf)} points from CSV")
+                m.add_gdf(gdf, layer_name="Uploaded CSV")
+                m.zoom_to_gdf(gdf)
+            else:
+                st.error("Could not find latitude/longitude columns in CSV.")
+
+        # Show attribute table
+        if "gdf" in locals():
+            st.subheader("📋 Attribute Table")
+            st.dataframe(gdf.head())
+
+# ---- Show map ----
+m.to_streamlit(height=700)
