@@ -47,10 +47,13 @@ if uploaded_file is not None:
 
         # Case 2: KML
         elif uploaded_file.name.endswith(".kml"):
-            gdf = gpd.read_file(file_path)
-            st.success(f"✅ Loaded {len(gdf)} features from KML")
-            m.add_gdf(gdf, layer_name="Uploaded KML")
-            m.zoom_to_gdf(gdf)
+            try:
+                gdf = leafmap.load_kml(file_path)
+                st.success(f"✅ Loaded {len(gdf)} features from KML")
+                m.add_gdf(gdf, layer_name="Uploaded KML")
+                m.zoom_to_gdf(gdf)
+            except Exception as e:
+                st.error(f"Error reading KML: {e}")
 
         # Case 3: GeoJSON
         elif uploaded_file.name.endswith(".geojson"):
