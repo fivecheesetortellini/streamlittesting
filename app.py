@@ -61,7 +61,7 @@ if uploaded_file is not None:
                 k.from_string(doc.encode('utf-8'))
 
                 features = []
-                for feature in list(k.features()):
+                for feature in k.features:
                     for f2 in feature.features():
                         if hasattr(f2, "geometry") and f2.geometry is not None:
                             geom = shape(f2.geometry.__geo_interface__)
