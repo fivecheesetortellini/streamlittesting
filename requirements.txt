@@ -6,3 +6,4 @@ leafmap
 fiona
 shapely
 pandas
+fastkml
