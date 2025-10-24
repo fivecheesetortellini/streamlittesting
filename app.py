@@ -62,14 +62,21 @@ if uploaded_file is not None:
                     doc = f.read()
                 k.from_string(doc.encode('utf-8'))
 
-                features = []
-                # ✅ Note: .features is an iterable, not a callable
-                for feature in k.features:
-                    for f2 in getattr(feature, "features", []):
-                        if hasattr(f2, "geometry") and f2.geometry is not None:
-                            geom = shape(f2.geometry.__geo_interface__)
-                            name = getattr(f2, "name", "Unnamed")
-                            features.append({"geometry": geom, "name": name})
+                # Recursive function to extract geometries from any depth
+                def extract_features(obj):
+                    items = []
+                    if hasattr(obj, "features"):
+                        for f in obj.features:
+                            items.extend(extract_features(f))
+                    else:
+                        if hasattr(obj, "geometry") and obj.geometry is not None:
+                            geom = shape(obj.geometry.__geo_interface__)
+                            name = getattr(obj, "name", "Unnamed")
+                            items.append({"geometry": geom, "name": name})
+                    return items
+
+                # Collect all features recursively
+                features = extract_features(k)
 
                 if features:
                     gdf = gpd.GeoDataFrame(features, crs="EPSG:4326")
