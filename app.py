@@ -19,6 +19,8 @@ m.add_basemap("CartoDB.Positron")
 st.sidebar.header("📂 Upload Spatial Data")
 
 # ---- File uploader ----
+gpd.io.file.fiona.drvsupport.supported_drivers['KML'] = 'rw'
+
 uploaded_file = st.sidebar.file_uploader(
     "Upload a Shapefile (.zip), KML, GeoJSON, or CSV file",
     type=["zip", "kml", "geojson", "csv"]
