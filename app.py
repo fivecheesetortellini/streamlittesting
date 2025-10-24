@@ -2,9 +2,13 @@ import streamlit as st
 import leafmap
 import leafmap.foliumap as leafmap
 import geopandas as gpd
+from fastkml import kml
 import tempfile
 import zipfile
 import os
+from shapely.geometry import shape
+import tempfile
+import io
 import pandas as pd
 from shapely.geometry import Point
 
@@ -50,10 +54,27 @@ if uploaded_file is not None:
         # Case 2: KML
         elif uploaded_file.name.endswith(".kml"):
             try:
-                gdf = leafmap.load_kml(file_path)
-                st.success(f"✅ Loaded {len(gdf)} features from KML")
-                m.add_gdf(gdf, layer_name="Uploaded KML")
-                m.zoom_to_gdf(gdf)
+                # ✅ Parse the KML using fastkml instead of fiona
+                k = kml.KML()
+                with open(file_path, 'rt', encoding='utf-8') as f:
+                    doc = f.read()
+                k.from_string(doc.encode('utf-8'))
+
+                features = []
+                for feature in list(k.features()):
+                    for f2 in feature.features():
+                        if hasattr(f2, "geometry") and f2.geometry is not None:
+                            geom = shape(f2.geometry.__geo_interface__)
+                            features.append({"geometry": geom, "name": f2.name})
+
+                if features:
+                    gdf = gpd.GeoDataFrame(features)
+                    st.success(f"✅ Loaded {len(gdf)} features from KML")
+                    m.add_gdf(gdf, layer_name="Uploaded KML")
+                    m.zoom_to_gdf(gdf)
+                else:
+                    st.warning("⚠️ No valid features found in KML")
+
             except Exception as e:
                 st.error(f"Error reading KML: {e}")
 
