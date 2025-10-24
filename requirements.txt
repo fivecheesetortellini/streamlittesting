@@ -3,6 +3,6 @@ folium==0.17.0
 streamlit-folium==0.23.0
 geopandas==0.14.3
 leafmap
-fiona==1.9.6
+fiona
 shapely
 pandas
