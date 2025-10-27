@@ -59,11 +59,13 @@ if uploaded_file is not None:
                 gdf = gdf.set_crs(epsg=4326, allow_override=True)
             gdf = gdf[gdf.geometry.notnull()]
             gdf = gdf.explode(index_parts=False, ignore_index=True)
-            st.success(f"✅ Loaded {len(gdf)} features from KML")
-            st.write(gdf.geom_type.value_counts())
-            m.add_gdf(gdf, layer_name="Uploaded KML")
-            m.zoom_to_gdf(gdf)
-
+            if st.success(f"✅ Loaded {len(gdf)} features from KML"):
+                st.write(gdf.geom_type.value_counts())
+                m.add_gdf(gdf, layer_name="Uploaded KML")
+                m.zoom_to_gdf(gdf)
+            else: 
+                st.error("Error adding KML to map.")
+            
 
         # Case 3: GeoJSON
         elif uploaded_file.name.endswith(".geojson"):
