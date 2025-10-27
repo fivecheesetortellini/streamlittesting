@@ -55,11 +55,15 @@ if uploaded_file is not None:
         # Case 2: KML
         elif uploaded_file.name.endswith('.kml'):
             gdf = gpd.read_file(uploaded_file, driver='KML')
-            # Ensure CRS is set to EPSG:4326 if not defined (KML often assumes WGS84)
             if gdf.crs is None or gdf.crs.to_string() != 'EPSG:4326':
-                gdf = gdf.to_crs(epsg=4326)
-                m.add_gdf(gdf, layer_name="Uploaded KML")
+                gdf = gdf.set_crs(epsg=4326, allow_override=True)
+            gdf = gdf[gdf.geometry.notnull()]
+            gdf = gdf.explode(index_parts=False, ignore_index=True)
+            st.success(f"✅ Loaded {len(gdf)} features from KML")
+            st.write(gdf.geom_type.value_counts())
+            m.add_gdf(gdf, layer_name="Uploaded KML")
             m.zoom_to_gdf(gdf)
+
 
         # Case 3: GeoJSON
         elif uploaded_file.name.endswith(".geojson"):
@@ -95,7 +99,7 @@ if uploaded_file is not None:
             st.subheader("📋 Attribute Table")
             st.dataframe(gdf.head())
 
-st_folium(m, width=700, height=500)
+#st_folium(m, width=700, height=500)
 
 # ---- Show map ----
 m.to_streamlit(height=700)
