@@ -52,42 +52,11 @@ if uploaded_file is not None:
                 st.error("No .shp file found in the ZIP archive.")
 
         # Case 2: KML
-        elif uploaded_file.name.endswith(".kml"):
-            try:
-                from fastkml import kml
-                from shapely.geometry import shape
-
-                k = kml.KML()
-                with open(file_path, 'rt', encoding='utf-8') as f:
-                    doc = f.read()
-                k.from_string(doc.encode('utf-8'))
-
-                # Recursive function to extract geometries from any depth
-                def extract_features(obj):
-                    items = []
-                    if hasattr(obj, "features"):
-                        for f in obj.features:
-                            items.extend(extract_features(f))
-                    else:
-                        if hasattr(obj, "geometry") and obj.geometry is not None:
-                            geom = shape(obj.geometry.__geo_interface__)
-                            name = getattr(obj, "name", "Unnamed")
-                            items.append({"geometry": geom, "name": name})
-                    return items
-
-                # Collect all features recursively
-                features = extract_features(k)
-
-                if features:
-                    gdf = gpd.GeoDataFrame(features, crs="EPSG:4326")
-                    st.success(f"✅ Loaded {len(gdf)} features from KML")
-                    m.add_gdf(gdf, layer_name="Uploaded KML")
-                    m.zoom_to_gdf(gdf)
-                else:
-                    st.warning("⚠️ No valid features found in KML")
-
-            except Exception as e:
-                st.error(f"Error reading KML: {e}")
+        elif uploaded_file.name.endswith('.kml'):
+                    gdf = gpd.read_file(uploaded_file, driver='KML')
+                    # Ensure CRS is set to EPSG:4326 if not defined (KML often assumes WGS84)
+                    if gdf.crs is None or gdf.crs.to_string() != 'EPSG:4326':
+                        gdf = gdf.to_crs(epsg=4326)
 
         # Case 3: GeoJSON
         elif uploaded_file.name.endswith(".geojson"):
