@@ -66,7 +66,6 @@ if uploaded_file is not None:
             else: 
                 st.error("Error adding KML to map.")
             
-
         # Case 3: GeoJSON
         elif uploaded_file.name.endswith(".geojson"):
             gdf = gpd.read_file(file_path)
@@ -104,4 +103,4 @@ if uploaded_file is not None:
 st_folium(m, width=700, height=500)
 
 # ---- Show map ----
-m.to_streamlit(height=700)
+#m.to_streamlit(height=700)
