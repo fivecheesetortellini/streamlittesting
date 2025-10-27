@@ -1,6 +1,7 @@
 import streamlit as st
 import leafmap
 import leafmap.foliumap as leafmap
+from streamlit_folium import st_folium
 import geopandas as gpd
 from fastkml import kml
 import tempfile
@@ -53,10 +54,10 @@ if uploaded_file is not None:
 
         # Case 2: KML
         elif uploaded_file.name.endswith('.kml'):
-                    gdf = gpd.read_file(uploaded_file, driver='KML')
-                    # Ensure CRS is set to EPSG:4326 if not defined (KML often assumes WGS84)
-                    if gdf.crs is None or gdf.crs.to_string() != 'EPSG:4326':
-                        gdf = gdf.to_crs(epsg=4326)
+            gdf = gpd.read_file(uploaded_file, driver='KML')
+            # Ensure CRS is set to EPSG:4326 if not defined (KML often assumes WGS84)
+            if gdf.crs is None or gdf.crs.to_string() != 'EPSG:4326':
+                gdf = gdf.to_crs(epsg=4326)
 
         # Case 3: GeoJSON
         elif uploaded_file.name.endswith(".geojson"):
@@ -91,6 +92,8 @@ if uploaded_file is not None:
         if "gdf" in locals():
             st.subheader("📋 Attribute Table")
             st.dataframe(gdf.head())
+
+st_folium(m, width=700, height=500)
 
 # ---- Show map ----
 m.to_streamlit(height=700)
