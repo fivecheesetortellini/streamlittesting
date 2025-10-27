@@ -58,6 +58,8 @@ if uploaded_file is not None:
             # Ensure CRS is set to EPSG:4326 if not defined (KML often assumes WGS84)
             if gdf.crs is None or gdf.crs.to_string() != 'EPSG:4326':
                 gdf = gdf.to_crs(epsg=4326)
+                m.add_gdf(gdf, layer_name="Uploaded KML")
+            m.zoom_to_gdf(gdf)
 
         # Case 3: GeoJSON
         elif uploaded_file.name.endswith(".geojson"):
