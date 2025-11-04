@@ -8,13 +8,13 @@ from streamlit_folium import st_folium
 # --- DB connection ---
 engine = create_engine("postgresql+psycopg2://iuneripuneefgiujn:JyZ4ZOKy.#cUj88f$Vlg@gis-postgresql-v15.postgres.database.azure.com/cousteau", pool_recycle=5)
 
-# --- Initialize map once ---
-if "map" not in st.session_state:
-    m = leafmap.Map(center=[37.8, -96], zoom=4)
-    m.add_basemap("CartoDB.Positron")
-    st.session_state["map"] = m
-else:
-    m = st.session_state["map"]
+# --- Initialize session state ---
+if "added_layers" not in st.session_state:
+    st.session_state["added_layers"] = []
+
+# --- Build map fresh each time (not stored object) ---
+m = leafmap.Map(center=[37.8, -96], zoom=4)
+m.add_basemap("CartoDB.Positron")
 
 # --- Sidebar ---
 st.sidebar.title("About")
@@ -60,16 +60,19 @@ if not layers_df.empty:
         gdf_pg = gpd.read_postgis(sql, engine, geom_col=geom_col)
 
         st.success(f"✅ Loaded {len(gdf_pg)} features from {selected_layer}")
+        
+        # Save to session state
+        st.session_state["added_layers"].append({
+            "name": selected_layer,
+            "gdf": gdf_pg
+        })
 
-        # --- Add to persistent map ---
-        m.add_gdf(gdf_pg, layer_name=selected_layer)
-        m.zoom_to_gdf(gdf_pg)
+for lyr in st.session_state["added_layers"]:
+    m.add_gdf(lyr["gdf"], layer_name=lyr["name"])
 
-        # Save back to session state
-        st.session_state["map"] = m
-
-else:
-    st.info("No spatial layers found in your PostGIS database. Is your VPN turned on?")
+# --- Fit to last layer added ---
+if st.session_state["added_layers"]:
+    m.zoom_to_gdf(st.session_state["added_layers"][-1]["gdf"])
 
 # --- Render map ---
 st_folium(m, width=700, height=500)
