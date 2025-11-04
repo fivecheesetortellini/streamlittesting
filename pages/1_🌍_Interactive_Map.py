@@ -62,7 +62,7 @@ layers_df = list_postgis_layers(engine)
 st.dataframe(layers_df)
 
 # --- User selection ---
-st.subheader("🗺 Add a PostGIS Layer to the Map")
+st.subheader("Add a PostGIS Layer to the Map")
 
 if not layers_df.empty:
     selected_layer = st.selectbox(
