@@ -5,21 +5,33 @@ import pandas as pd
 from sqlalchemy import create_engine
 from streamlit_folium import st_folium
 
-# --- DB connection ---
+#Connect to Postgres
 engine = create_engine("postgresql+psycopg2://iuneripuneefgiujn:JyZ4ZOKy.#cUj88f$Vlg@gis-postgresql-v15.postgres.database.azure.com/cousteau", pool_recycle=5)
 
-# --- Initialize session state ---
+#Start the Session State to keep layers in map thru user clicks 
 if "added_layers" not in st.session_state:
     st.session_state["added_layers"] = []
 
-# --- Build map fresh each time (not stored object) ---
-m = leafmap.Map(center=[37.8, -96], zoom=4)
-m.add_basemap("CartoDB.Positron")
+if "selected_basemap" not in st.session_state:
+    st.session_state["selected_basemap"] = "CartoDB.Positron"
+st.sidebar.subheader("🗺️ Basemap Options")
+basemaps = ["CartoDB.Positron",
+            "OpenStreetMap",
+            "TERRAIN",
+            "ROADMAP",
+            "SATELLITE",
+            "HYBRID"]
+selected_basemap = st.sidebar.selectbox("Select a basemap:", basemaps, index=basemaps.index(st.session_state["selected_basemap"]))
+st.session_state["selected_basemap"] = selected_basemap
 
-# --- Sidebar ---
+# Create the Map
+m = leafmap.Map(center=[37.8, -96], zoom=4)
+m.add_basemap(selected_basemap)
+
+# Sidebar Panel Information
 st.sidebar.title("About")
-st.sidebar.info("Use this page to view data in the geoSLOT database!")
-st.sidebar.image("https://i.imgur.com/UbOXYAU.png")
+st.sidebar.info("Using this page, the user can access and edit data that they have access to from the geoSLOT. If you have any questions, reach out to the GSYNC team, shown below.")
+st.sidebar.image("C:/Users/AbbyHildebrandt/GSYNC.png", use_column_width=True)
 
 # --- Main UI ---
 st.title("View Data From geoSLOT")
@@ -75,5 +87,5 @@ if st.session_state["added_layers"]:
     m.zoom_to_gdf(st.session_state["added_layers"][-1]["gdf"])
 
 # --- Render map ---
-st_folium(m, width=700, height=500)
+st_folium(m, width=900, height=600)
 

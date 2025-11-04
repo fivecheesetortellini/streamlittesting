@@ -100,7 +100,7 @@ if uploaded_file is not None:
             st.subheader("📋 Attribute Table")
             st.dataframe(gdf.head())
 
-st_folium(m, width=700, height=500)
+st_folium(m, width=900, height=700)
 
-# ---- Show map ----
+# ---- Adds map to the bottom of page ----
 #m.to_streamlit(height=700)
