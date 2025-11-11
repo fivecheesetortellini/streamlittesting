@@ -15,19 +15,19 @@ engine = create_engine(
     pool_recycle=5
 )
 
-# Select project
+
 projects = pd.read_sql(
     "SELECT DISTINCT project_name FROM parcels.masterparcel ORDER BY project_name;", engine
 )
 selected_project = st.selectbox("Select a project:", projects["project_name"])
 
-# Symbology selection
+
 symbology_type = st.selectbox(
     "Select Symbology Type:",
     ["Red / Yellow / Green", "Land Control Status"]
 )
 
-# Only show folder structure selection for Land Control Status
+
 if symbology_type == "Land Control Status":
     lc_folder_structure = st.selectbox(
         "Select Folder Structure:",
@@ -39,18 +39,17 @@ if selected_project:
     gdf = gpd.read_postgis(sql, engine, geom_col="shape")
     st.success(f"Found {len(gdf)} parcels for {selected_project}")
 
-    # Display map
+
     m = leafmap.Map()
     m.add_gdf(gdf, layer_name=selected_project)
     m.zoom_to_gdf(gdf)
     m.to_streamlit(height=600)
 
-# --- KML Export Section ---
+
 if st.button("Export to KML"):
     kml = simplekml.Kml()
     root_folder = kml.newfolder(name=selected_project)
 
-    # --- Red/Yellow/Green symbology ---
     red_statuses = ["Not Interested / Declined", "Opposition", "Signed with Competition"]
     yellow_statuses = [
         "Contacted", "Other Parcel Signed", "Attempted Contact",
@@ -82,7 +81,7 @@ if st.button("Export to KML"):
         "Signed Other Agreement": "4daf4a"
     }
 
-    # --- Folder setup ---
+  
     if symbology_type == "Red / Yellow / Green":
         folders = {
             "Red": root_folder.newfolder(name="🟥 Red - Not Interested / Declined / Opposition / Signed with Competition"),
@@ -106,29 +105,34 @@ if st.button("Export to KML"):
         else:  # By Owner
             folders = {owner: root_folder.newfolder(name=owner) for owner in gdf["owner"].unique()}
 
-    # --- Function to extract polygon coordinates ---
-    def extract_coords(geom_part):
-        return [(x, y) for x, y, *rest in geom_part.exterior.coords]
 
-    # --- Function to create polygon ---
+    def extract_coords(geom_part):
+        coords = []
+        for x, y, *rest in geom_part.exterior.coords:
+            coords.append((x, y))
+        return coords
+
+  
+
     def create_polygon(folder, geom, color, description, parcel_id):
+        pol = folder.newpolygon(name=parcel_id)
+        pol.description = description
+
         if geom.geom_type == "Polygon":
             coords = extract_coords(geom)
-            pol = folder.newpolygon(name=f"Parcel {parcel_id}")
             pol.outerboundaryis = coords
-            pol.description = description
-            pol.style.polystyle.color = color
-            pol.style.linestyle.width = 2
+
         elif geom.geom_type == "MultiPolygon":
             for part in geom.geoms:
                 coords = extract_coords(part)
-                pol = folder.newpolygon(name=f"Parcel {parcel_id}")
                 pol.outerboundaryis = coords
-                pol.description = description
-                pol.style.polystyle.color = color
-                pol.style.linestyle.width = 2
 
-    # --- Iterate parcels ---
+      
+        pol.style.polystyle.color = simplekml.Color.changealphaint(150, simplekml.Color.hex(color))
+        pol.style.linestyle.color = simplekml.Color.black
+        pol.style.linestyle.width = 1   
+
+
     for _, row in gdf.iterrows():
         geom = row["shape"]
         owner = row.get("owner", "Unknown Owner")
@@ -145,7 +149,6 @@ if st.button("Export to KML"):
             f"<b>Salesforce URL:</b> <a href='{sf_url}' target='_blank'>{sf_url}</a>"
         )
 
-        # Assign folder and color
         if symbology_type == "Red / Yellow / Green":
             folder_key = get_color_category(parcel_status)
             if folder_key is None:
@@ -154,11 +157,12 @@ if st.button("Export to KML"):
             color = color_mapping[folder_key]
         else:  # Land Control Status
             folder = folders[parcel_status] if lc_folder_structure == "By Status" else folders[owner]
-            color = land_control_hex.get(parcel_status, "ffffff")
+            color = land_control_hex.get(parcel_status, "#ffffff")
+
 
         create_polygon(folder, geom, color, description, parcel_id)
 
-    # --- Save and provide download link ---
+   
     with tempfile.NamedTemporaryFile(delete=False, suffix=".kml") as tmp:
         kml.save(tmp.name)
         with open(tmp.name, "rb") as file:
