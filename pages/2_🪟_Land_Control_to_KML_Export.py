@@ -58,10 +58,10 @@ if st.button("Export to KML"):
     green_statuses = ["Signed Lease", "Multiple Agreements Signed", "QC Check Required",
                       "Signed Neighbor Agreement", "Signed Other Agreement"]
 
-    color_mapping = {
-        "Red": simplekml.Color.changealphaint(100, simplekml.Color.red),
-        "Yellow": simplekml.Color.changealphaint(100, simplekml.Color.yellow),
-        "Green": simplekml.Color.changealphaint(100, simplekml.Color.green),
+    red_yellow_green_hex = {
+    "Red": "e41a1c",      
+    "Yellow": "ffff33",   
+    "Green": "4daf4a",   
     }
 
     land_control_hex = {
@@ -121,16 +121,22 @@ if st.button("Export to KML"):
         if geom.geom_type == "Polygon":
             coords = extract_coords(geom)
             pol.outerboundaryis = coords
-
         elif geom.geom_type == "MultiPolygon":
             for part in geom.geoms:
                 coords = extract_coords(part)
                 pol.outerboundaryis = coords
 
-      
-        pol.style.polystyle.color = simplekml.Color.changealphaint(150, simplekml.Color.hex(color))
+        if color.lower() in ["#ffffff", "ffffff"]:
+            pol.style.polystyle.color = simplekml.Color.changealphaint(0, simplekml.Color.white)
+        else:
+            pol.style.polystyle.color = simplekml.Color.changealphaint(
+                215, simplekml.Color.hex(color)
+            )
+
         pol.style.linestyle.color = simplekml.Color.black
-        pol.style.linestyle.width = 1   
+        pol.style.linestyle.width = 1
+
+   
 
 
     for _, row in gdf.iterrows():
@@ -154,11 +160,11 @@ if st.button("Export to KML"):
             if folder_key is None:
                 continue
             folder = folders[folder_key]
-            color = color_mapping[folder_key]
+            color = red_yellow_green_hex[folder_key]
         else:  # Land Control Status
             folder = folders[parcel_status] if lc_folder_structure == "By Status" else folders[owner]
             color = land_control_hex.get(parcel_status, "#ffffff")
-
+      
 
         create_polygon(folder, geom, color, description, parcel_id)
 
