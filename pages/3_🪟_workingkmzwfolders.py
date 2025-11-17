@@ -6,7 +6,6 @@ import leafmap.foliumap as leafmap
 import tempfile
 import simplekml
 import xml.sax.saxutils as sax
-from sqlalchemy import text
 
 st.title("Parcel Lookup & Export")
 
@@ -23,7 +22,6 @@ projects = pd.read_sql(
 selected_project = st.selectbox("Select a project:", projects["project_name"])
 
 
-
 symbology_type = st.selectbox(
     "Select Symbology Type:",
     ["Red / Yellow / Green", "Land Control Status"]
@@ -37,20 +35,13 @@ if symbology_type == "Land Control Status":
     )
 
 if selected_project:
-    st.subheader("Optional filters")
-    owner_filter = st.text_input("Owner contains (optional)")
-
     sql = f"SELECT * FROM parcels.masterparcel WHERE project_name = '{selected_project}'"
-    if owner_filter.strip():
-        owner_escaped = owner_filter.replace("'", "''")  # simple SQL escape
-        sql += f" AND owner ILIKE '%{owner_escaped}%'"
-    
-    gdf = gpd.read_postgis(text(sql), con=engine, geom_col="shape")
+    gdf = gpd.read_postgis(sql, engine, geom_col="shape")
     st.success(f"Found {len(gdf)} parcels for {selected_project}")
 
 
     m = leafmap.Map()
-    m.add_gdf(gdf, layer_name=f"{selected_project} (filtered)" if owner_filter.strip() else selected_project)
+    m.add_gdf(gdf, layer_name=selected_project)
     m.zoom_to_gdf(gdf)
     m.to_streamlit(height=600)
 
@@ -187,7 +178,3 @@ if st.button("Export to KML"):
                 file_name=f"{selected_project}_parcels.kml",
                 mime="application/vnd.google-earth.kml+xml"
             )
-
-
-
-
